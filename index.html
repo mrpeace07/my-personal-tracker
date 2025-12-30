@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>2026 — Content Tracker</title>
+
+<style>
+:root{
+  --bg:#0d0f14;
+  --card:#151922;
+  --text:#eaeaf0;
+  --muted:#8b8fa3;
+  --border:#24283a;
+
+  --sat-bg:#10211f;
+  --sun-bg:#23141d;
+  --sat-br:#2c564d;
+  --sun-br:#6b2c4a;
+
+  --green:#2ecc71;
+  --green2:#39d353;
+
+  --accent:#6c5ce7;
+  --accentSoft:#282146;
+}
+
+*{box-sizing:border-box;font-family:Inter,system-ui,sans-serif}
+body{margin:0;background:var(--bg);color:var(--text)}
+.container{max-width:1400px;margin:auto;padding:20px}
+
+h1{font-size:1.5rem;margin:0 0 6px}
+.sub{font-size:.82rem;color:var(--muted);margin:0 0 12px}
+
+/* Top cards */
+.topbar{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-bottom:14px;
+}
+.card{
+  background:var(--card);
+  border:1px solid #25283b;
+  border-radius:12px;
+  padding:10px 12px;
+  min-width:180px;
+}
+.card .label{font-size:.7rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.card .value{font-size:1.05rem;margin-top:4px}
+.magic{
+  flex:1;
+  min-width:260px;
+  background:var(--accentSoft);
+  border-color:#41387b;
+}
+.magic .value{font-size:.85rem;color:#c9c6ff;line-height:1.35}
+
+/* Table */
+.table-wrap{
+  background:var(--card);
+  border-radius:14px;
+  overflow-x:auto;
+  border:1px solid #25283b;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  min-width:1200px;
+}
+th,td{
+  padding:8px;
+  border-bottom:1px solid var(--border);
+  font-size:.82rem;
+  vertical-align:top;
+}
+th{
+  text-align:left;
+  color:var(--muted);
+  font-weight:500;
+  position:sticky;
+  top:0;
+  background:var(--card);
+  z-index:1;
+}
+tr:hover td{background:#ffffff05}
+
+/* Weekend coloring */
+tr.sat td{background:var(--sat-bg);border-bottom-color:var(--sat-br)}
+tr.sun td{background:var(--sun-bg);border-bottom-color:var(--sun-br)}
+
+/* Date cell */
+.date-cell{display:flex;flex-direction:column;gap:3px}
+.badge{
+  display:inline-flex;
+  align-self:flex-start;
+  padding:2px 7px;
+  border-radius:999px;
+  font-size:.65rem;
+  border:1px solid #ffffff22;
+  color:#f1f1ff;
+}
+.badge.sat{border-color:rgba(46,204,113,.55);background:rgba(46,204,113,.14)}
+.badge.sun{border-color:rgba(231,76,60,.65);background:rgba(231,76,60,.14)}
+
+/* Inputs */
+input,select,textarea{
+  width:100%;
+  background:transparent;
+  border:1px solid transparent;
+  color:var(--text);
+  outline:none;
+  font-size:.82rem;
+  border-radius:8px;
+  padding:6px;
+}
+input:focus,select:focus,textarea:focus{
+  border-color:#ffffff18;
+  background:#00000012;
+}
+textarea{
+  resize:vertical;
+  min-height:54px;
+}
+input::placeholder,textarea::placeholder{color:#5c6072}
+
+/* Dropdown arrow alignment */
+select{
+  appearance:none;
+  padding-right:26px;
+  background-image:
+    linear-gradient(45deg,transparent 50%,var(--muted) 50%),
+    linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 9px) 50%;
+  background-size:5px 5px,5px 5px;
+  background-repeat:no-repeat;
+}
+
+/* Checkbox column */
+th.tick-col, td.tick-col{width:78px;text-align:center}
+.tick-wrap{display:flex;justify-content:center;align-items:center}
+
+/* Stylish green tick */
+.tick{
+  appearance:none;
+  width:24px;
+  height:24px;
+  border-radius:8px;
+  border:1px solid #3a3e53;
+  background:#0e111b;
+  cursor:pointer;
+  display:grid;
+  place-items:center;
+  transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease;
+}
+.tick:hover{transform:scale(1.03)}
+.tick:checked{
+  background:rgba(46,204,113,.22);
+  border-color:rgba(57,211,83,.9);
+  box-shadow:0 0 0 3px rgba(57,211,83,.08), 0 0 18px rgba(57,211,83,.22);
+}
+.tick:checked::after{
+  content:"";
+  width:10px;
+  height:6px;
+  border-left:3px solid var(--green2);
+  border-bottom:3px solid var(--green2);
+  transform:rotate(-45deg);
+  margin-top:-1px;
+}
+
+/* Small helper text in date cell */
+.small{font-size:.7rem;color:var(--muted)}
+</style>
+</head>
+
+<body>
+<div class="container">
+  <h1>2026 — 365 Day Content Tracker</h1>
+  <p class="sub">Gym · Coding · Photography · Journalism · Motivation/Memes (saved to browser storage)</p>
+
+  <div class="topbar">
+    <div class="card">
+      <div class="label">Current streak</div>
+      <div class="value" id="curStreak">0 days</div>
+    </div>
+    <div class="card">
+      <div class="label">Best streak</div>
+      <div class="value" id="bestStreak">0 days</div>
+    </div>
+    <div class="card">
+      <div class="label">Total posted</div>
+      <div class="value" id="totalPosted">0</div>
+    </div>
+    <div class="card magic">
+      <div class="label">Magic line</div>
+      <div class="value" id="magicLine">Tick a day to start the chain.</div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table id="tracker">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th style="width:90px;">Day</th>
+          <th class="tick-col">Posted</th>
+          <th style="width:140px;">What Posted</th>
+          <th>Plan</th>
+          <th>Hooks</th>
+          <th>Scripts</th>
+          <th style="width:140px;">Reach</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const YEAR = 2026;
+const tbody = document.querySelector("#tracker tbody");
+
+const curStreakEl = document.getElementById("curStreak");
+const bestStreakEl = document.getElementById("bestStreak");
+const totalPostedEl = document.getElementById("totalPosted");
+const magicLineEl = document.getElementById("magicLine");
+
+function keyForDay(dayNum){ return `y${YEAR}_day_${dayNum}`; }
+
+function defaultRow(){
+  return {
+    posted: false,
+    whatPosted: "",
+    plan: "",
+    hooks: "",
+    scripts: "",
+    reach: "",     // string
+    notes: ""
+  };
+}
+
+function loadRow(dayNum){
+  const raw = localStorage.getItem(keyForDay(dayNum));
+  if (!raw) return defaultRow();
+  try{
+    const d = JSON.parse(raw);
+    return {
+      posted: !!d.posted,
+      whatPosted: d.whatPosted ?? "",
+      plan: d.plan ?? "",
+      hooks: d.hooks ?? "",
+      scripts: d.scripts ?? "",
+      reach: d.reach ?? "",
+      notes: d.notes ?? ""
+    };
+  }catch{
+    return defaultRow();
+  }
+}
+
+function saveRow(dayNum, data){
+  localStorage.setItem(keyForDay(dayNum), JSON.stringify(data));
+  updateStreaks();
+}
+
+function formatDate(date){
+  // Thu, 01 Jan 2026
+  return date.toLocaleDateString("en-GB", {
+    weekday:"short",
+    day:"2-digit",
+    month:"short",
+    year:"numeric"
+  });
+}
+
+/**
+ * Streak rules (matches what feels right for you):
+ * - best streak = max consecutive posted days anywhere
+ * - current streak = consecutive posted days ending at the latest posted day
+ */
+function updateStreaks(){
+  let total = 0;
+  let best = 0;
+
+  // For current streak: find latest day with posted true
+  let lastPostedDay = 0;
+
+  // 1) scan to compute total, best, lastPostedDay
+  let run = 0;
+  for (let d=1; d<=dayCount; d++){
+    const row = loadRow(d);
+    if (row.posted){
+      total++;
+      run++;
+      if (run > best) best = run;
+      lastPostedDay = d;
+    } else {
+      run = 0;
+    }
+  }
+
+  // 2) compute current streak ending at lastPostedDay
+  let current = 0;
+  if (lastPostedDay > 0){
+    for (let d=lastPostedDay; d>=1; d--){
+      const row = loadRow(d);
+      if (row.posted) current++;
+      else break;
+    }
+  }
+
+  curStreakEl.textContent = `${current} day${current===1?"":"s"}`;
+  bestStreakEl.textContent = `${best} day${best===1?"":"s"}`;
+  totalPostedEl.textContent = `${total}`;
+
+  // Magic line
+  if (total === 0){
+    magicLineEl.textContent = "Start clean: tick Day 1. Momentum begins with one tick.";
+  } else if (current === 0){
+    magicLineEl.textContent = "Chain is paused. Tick the next day you post and restart the streak.";
+  } else if (current < 3){
+    magicLineEl.textContent = `Good. ${current}-day chain is alive. One more day and it feels real.`;
+  } else if (current < 7){
+    magicLineEl.textContent = `Solid. ${current} days consistent. Keep it boring and repeatable.`;
+  } else {
+    magicLineEl.textContent = `You’re cooking: ${current} days. Now the goal is: don’t break the chain.`;
+  }
+}
+
+let start = new Date(YEAR, 0, 1);
+let dayCount = 0;
+
+while (start.getFullYear() === YEAR){
+  dayCount++;
+  const tr = document.createElement("tr");
+
+  const weekday = start.getDay(); // 0 Sun, 6 Sat
+  if (weekday === 6) tr.classList.add("sat");
+  if (weekday === 0) tr.classList.add("sun");
+
+  const data = loadRow(dayCount);
+
+  // DATE
+  const tdDate = document.createElement("td");
+  const wrap = document.createElement("div");
+  wrap.className = "date-cell";
+
+  const main = document.createElement("div");
+  main.textContent = formatDate(start);
+  wrap.appendChild(main);
+
+  if (weekday === 6 || weekday === 0){
+    const b = document.createElement("span");
+    b.className = "badge " + (weekday===6 ? "sat" : "sun");
+    b.textContent = weekday===6 ? "Saturday" : "Sunday";
+    wrap.appendChild(b);
+  }
+
+  tdDate.appendChild(wrap);
+  tr.appendChild(tdDate);
+
+  // DAY
+  const tdDay = document.createElement("td");
+  tdDay.innerHTML = `<div>Day ${dayCount}</div>`;
+  tr.appendChild(tdDay);
+
+  // POSTED (tick only)
+  const tdTick = document.createElement("td");
+  tdTick.className = "tick-col";
+  const tickWrap = document.createElement("div");
+  tickWrap.className = "tick-wrap";
+
+  const tick = document.createElement("input");
+  tick.type = "checkbox";
+  tick.className = "tick";
+  tick.checked = !!data.posted;
+
+  tickWrap.appendChild(tick);
+  tdTick.appendChild(tickWrap);
+  tr.appendChild(tdTick);
+
+  // WHAT POSTED (dropdown)
+  const tdWhat = document.createElement("td");
+  const what = document.createElement("select");
+  const options = ["", "Reel", "Code", "Photo", "Thread", "Meme", "Other"];
+  options.forEach(v=>{
+    const o = document.createElement("option");
+    o.value = v;
+    o.textContent = v==="" ? "Select" : v;
+    if (v === data.whatPosted) o.selected = true;
+    what.appendChild(o);
+  });
+  tdWhat.appendChild(what);
+  tr.appendChild(tdWhat);
+
+  // PLAN
+  const tdPlan = document.createElement("td");
+  const plan = document.createElement("textarea");
+  plan.placeholder = "Plan (space to write properly)";
+  plan.value = data.plan;
+  tdPlan.appendChild(plan);
+  tr.appendChild(tdPlan);
+
+  // HOOKS
+  const tdHooks = document.createElement("td");
+  const hooks = document.createElement("textarea");
+  hooks.placeholder = "Hooks";
+  hooks.value = data.hooks;
+  tdHooks.appendChild(hooks);
+  tr.appendChild(tdHooks);
+
+  // SCRIPTS
+  const tdScripts = document.createElement("td");
+  const scripts = document.createElement("textarea");
+  scripts.placeholder = "Scripts / talking points";
+  scripts.value = data.scripts;
+  tdScripts.appendChild(scripts);
+  tr.appendChild(tdScripts);
+
+  // REACH (string)
+  const tdReach = document.createElement("td");
+  const reach = document.createElement("input");
+  reach.type = "text";
+  reach.placeholder = "Reach (string)";
+  reach.value = data.reach;
+  tdReach.appendChild(reach);
+  tr.appendChild(tdReach);
+
+  // NOTES
+  const tdNotes = document.createElement("td");
+  const notes = document.createElement("textarea");
+  notes.placeholder = "Notes / learnings";
+  notes.value = data.notes;
+  tdNotes.appendChild(notes);
+  tr.appendChild(tdNotes);
+
+  function collect(){
+    return {
+      posted: tick.checked,
+      whatPosted: what.value,
+      plan: plan.value,
+      hooks: hooks.value,
+      scripts: scripts.value,
+      reach: reach.value,   // string
+      notes: notes.value
+    };
+  }
+
+  // IMPORTANT: save on both input and change (checkbox + select need change)
+  const saveNow = () => saveRow(dayCount, collect());
+  tick.addEventListener("change", saveNow);
+  what.addEventListener("change", saveNow);
+
+  plan.addEventListener("input", saveNow);
+  hooks.addEventListener("input", saveNow);
+  scripts.addEventListener("input", saveNow);
+  reach.addEventListener("input", saveNow);
+  notes.addEventListener("input", saveNow);
+
+  tbody.appendChild(tr);
+  start.setDate(start.getDate() + 1);
+}
+
+updateStreaks();
+</script>
+</body>
+</html>
